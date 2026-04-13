@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Soltra</string>
+    <string name="widget_today_spent_label">Depenses du jour</string>
+    <string name="widget_period_remaining_label">Reste sur la periode</string>
+    <string name="widget_period_budget_unset">budget non defini</string>
+    <string name="widget_money_placeholder">0,00 EUR</string>
+    <string name="widget_period_placeholder">0,00 / 0,00</string>
+    <string name="widget_quick_add_button">Ajout rapide</string>
+    <string name="widget_budget_overview_name">Vue Budget</string>
+    <string name="widget_quick_add_name">Ajout Rapide</string>
+    <string name="widget_chart_name">Graphique Depenses</string>
+    <string name="widget_budget_overview_description">Vue budget et reste de la periode</string>
+    <string name="widget_quick_add_description">Ajouter une depense en un geste</string>
+    <string name="widget_chart_description">Graphique personnalise base sur tes depenses</string>
+    <string name="widget_chart_default_title">Graphique</string>
+    <string name="widget_chart_default_subtitle">Mois courant</string>
+    <string name="widget_chart_default_total">Total : 0,00</string>
+    <string name="widget_chart_subtitle_format">%1$s / %2$s</string>
+    <string name="widget_chart_total_format">Total : %1$s</string>
+    <string name="widget_chart_empty">Aucune depense sur cette periode</string>
+    <string name="widget_chart_type_pie">Camembert</string>
+    <string name="widget_chart_type_donut">Anneau</string>
+    <string name="widget_chart_type_bar">Barres</string>
+    <string name="widget_chart_category_fallback">Categorie</string>
+    <string name="widget_chart_config_title">Widget graphique</string>
+    <string name="widget_chart_config_subtitle">Choisis le style de graphique pour ton widget d\'accueil.</string>
+    <string name="widget_chart_config_title_label">Titre</string>
+    <string name="widget_chart_config_type_label">Type de graphique</string>
+    <string name="widget_chart_config_period_label">Periode</string>
+    <string name="widget_chart_config_grouping_label">Regroupement</string>
+    <string name="widget_chart_config_custom_dates_label">Periode personnalisee</string>
+    <string name="widget_chart_config_from">Du</string>
+    <string name="widget_chart_config_to">Au</string>
+    <string name="widget_chart_config_confirm">Ajouter le widget</string>
+    <string name="widget_chart_pick_date">Choisir</string>
+    <string name="widget_chart_not_set">Non defini</string>
+    <string name="widget_chart_custom_required">Choisis une date de debut et de fin</string>
+    <string name="widget_chart_period_current_month">Mois courant</string>
+    <string name="widget_chart_period_previous_month">Mois precedent</string>
+    <string name="widget_chart_period_current_year">Annee courante</string>
+    <string name="widget_chart_period_previous_year">Annee precedente</string>
+    <string name="widget_chart_period_custom">Periode personnalisee</string>
+    <string name="widget_chart_grouping_category">Par categorie</string>
+    <string name="widget_chart_grouping_payment_method">Par moyen de paiement</string>
+    <string name="widget_chart_grouping_month">Par mois</string>
+</resources>

@@ -1,0 +1,44 @@
+# Android / Gradle
+.gradle/
+**/build/
+build/
+app/build/
+gradle-temp/
+local.properties
+!local.properties.example
+
+# Kotlin
+.kotlin/
+
+# IDE
+.idea/
+*.iml
+
+# Native / NDK
+.cxx/
+.externalNativeBuild/
+
+# Build outputs
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Logs
+*.log
+
+# Secrets / signing material
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+*.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db

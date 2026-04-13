@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#0E6B68" />
+        </shape>
+    </item>
+
+    <item>
+        <inset
+            android:insetLeft="112dp"
+            android:insetTop="280dp"
+            android:insetRight="112dp"
+            android:insetBottom="280dp">
+            <bitmap
+                android:antialias="true"
+                android:gravity="center"
+                android:src="@drawable/ic_splash_logo" />
+        </inset>
+    </item>
+</layer-list>
