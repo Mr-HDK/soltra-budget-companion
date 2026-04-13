@@ -6,7 +6,7 @@ Soltra is a local-first Android app for personal budget tracking. It focuses on 
 
 APK files should be distributed through **GitHub Releases**, not committed into the source repository.
 
-- Latest release page: `https://github.com/<owner>/<repo>/releases/latest`
+- Latest release page: `https://github.com/Mr-HDK/soltra-budget-companion/releases/latest`
 - Release assets: download the APK attached to the release (example: `soltra-v1.2.0.apk`)
 
 ### Install on Android

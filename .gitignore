@@ -30,6 +30,7 @@ captures/
 *.log
 
 # Secrets / signing material
+keystore.properties
 *.jks
 *.keystore
 *.p12
