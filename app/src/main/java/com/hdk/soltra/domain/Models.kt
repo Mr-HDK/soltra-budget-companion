@@ -10,6 +10,7 @@ data class ExpenseRecord(
     val paymentMethod: PaymentMethod,
     val merchantOrLabel: String?,
     val note: String?,
+    val amountExpression: String? = null,
 )
 
 data class CategoryModel(

@@ -25,6 +25,7 @@ data class ExpenseEntity(
     val paymentMethod: String,
     val merchantOrLabel: String?,
     val note: String?,
+    val amountExpression: String? = null,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
     val source: String = "manual",

@@ -31,6 +31,8 @@ import com.hdk.soltra.i18n.AppLanguagePreference
 import com.hdk.soltra.i18n.resolveLocale
 import com.hdk.soltra.sync.BackupScheduler
 import com.hdk.soltra.sync.ReminderScheduler
+import com.hdk.soltra.util.amountExpressionToMinorOrNull
+import com.hdk.soltra.util.isAmountExpression
 import com.hdk.soltra.util.minorToInputString
 import com.hdk.soltra.util.monthRangeEpochMillis
 import com.hdk.soltra.util.moneyInputToMinorOrNull
@@ -109,6 +111,8 @@ data class ExpenseFilterUiState(
     val search: String = "",
     val categoryId: Long? = null,
     val paymentMethod: PaymentMethod? = null,
+    val fromEpochMillis: Long? = null,
+    val toEpochMillis: Long? = null,
 )
 
 data class AddCheckpointUiState(
@@ -325,6 +329,8 @@ class MainViewModel(
                         search = ui.search,
                         categoryId = ui.categoryId,
                         paymentMethod = ui.paymentMethod,
+                        fromEpochMillis = ui.fromEpochMillis,
+                        toEpochMillis = ui.toEpochMillis,
                     ),
                 )
             }
@@ -631,6 +637,14 @@ class MainViewModel(
         container.userSettingsRepository.noExpenseReminderDays
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 2)
 
+    val checkpointReminderDays: StateFlow<Int> =
+        container.userSettingsRepository.checkpointReminderDays
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 7)
+
+    val budgetWarningPercent: StateFlow<Int> =
+        container.userSettingsRepository.budgetWarningPercent
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 80)
+
     val appLockMode: StateFlow<AppLockMode> =
         container.userSettingsRepository.appLockMode
             .map(AppLockMode::fromStorage)
@@ -733,6 +747,13 @@ class MainViewModel(
         expenseFilterUi.value = expenseFilterUi.value.copy(paymentMethod = paymentMethod)
     }
 
+    fun setFilterDateRange(fromEpochMillis: Long?, toEpochMillis: Long?) {
+        expenseFilterUi.value = expenseFilterUi.value.copy(
+            fromEpochMillis = fromEpochMillis,
+            toEpochMillis = toEpochMillis,
+        )
+    }
+
     fun updateGraphEditorConfig(update: (GraphConfigModel) -> GraphConfigModel) {
         val updated = sanitizeGraphConfig(update(graphEditorUi.value.config))
         graphEditorUi.value = graphEditorUi.value.copy(config = updated)
@@ -830,7 +851,7 @@ class MainViewModel(
     fun saveExpense() {
         val state = addExpenseUi.value
         val categoryId = state.categoryId
-        val amountMinor = state.amountInput.moneyInputToMinorOrNull()
+        val amountMinor = state.amountInput.amountExpressionToMinorOrNull()
         if (categoryId == null || amountMinor == null || amountMinor <= 0) {
             bannerMessage.value = tr("Verifier montant et categorie", "Check amount and category")
             return
@@ -845,6 +866,7 @@ class MainViewModel(
                     paymentMethod = state.paymentMethod,
                     merchantOrLabel = state.merchantOrLabel,
                     note = state.note,
+                    amountExpression = state.amountInput.takeIf { it.isAmountExpression() },
                 )
             } else {
                 container.expenseRepository.updateExpense(
@@ -855,6 +877,7 @@ class MainViewModel(
                     paymentMethod = state.paymentMethod,
                     merchantOrLabel = state.merchantOrLabel,
                     note = state.note,
+                    amountExpression = state.amountInput.takeIf { it.isAmountExpression() },
                 )
             }
             addExpenseUi.value = AddExpenseUiState(
@@ -874,7 +897,7 @@ class MainViewModel(
         occurredAtEpochMillis: Long,
         note: String,
     ): Boolean {
-        val amountMinor = amountInput.moneyInputToMinorOrNull()
+        val amountMinor = amountInput.amountExpressionToMinorOrNull()
         if (categoryId == null || amountMinor == null || amountMinor <= 0L) {
             bannerMessage.value = tr("Verifier montant et categorie", "Check amount and category")
             return false
@@ -887,6 +910,7 @@ class MainViewModel(
                 paymentMethod = paymentMethod,
                 merchantOrLabel = null,
                 note = note,
+                amountExpression = amountInput.takeIf { it.isAmountExpression() },
             )
             addExpenseUi.value = AddExpenseUiState(
                 categoryId = categoryId,
@@ -901,7 +925,7 @@ class MainViewModel(
 
     fun startEditExpense(expense: ExpenseRecord) {
         addExpenseUi.value = AddExpenseUiState(
-            amountInput = expense.amountMinor.minorToInputString(),
+            amountInput = expense.amountExpression ?: expense.amountMinor.minorToInputString(),
             dateEpochMillis = expense.occurredAtEpochMillis,
             categoryId = expense.categoryId,
             paymentMethod = expense.paymentMethod,
@@ -1295,7 +1319,7 @@ class MainViewModel(
             bannerMessage.value = tr("Nom et categorie template obligatoires", "Template name and category are required")
             return
         }
-        val amountMinor = state.amountInput.moneyInputToMinorOrNull()
+        val amountMinor = state.amountInput.amountExpressionToMinorOrNull()
         if (state.amountInput.isNotBlank() && amountMinor == null) {
             bannerMessage.value = tr("Montant template invalide", "Invalid template amount")
             return
@@ -1351,7 +1375,7 @@ class MainViewModel(
     fun saveRecurringRule() {
         val state = recurringEditorUi.value
         val categoryId = state.categoryId
-        val amountMinor = state.amountInput.moneyInputToMinorOrNull()
+        val amountMinor = state.amountInput.amountExpressionToMinorOrNull()
         val interval = state.intervalValueInput.toIntOrNull()
         if (state.name.isBlank() || categoryId == null || amountMinor == null || amountMinor <= 0L || interval == null || interval <= 0) {
             bannerMessage.value = tr("Verifier nom, montant, categorie et intervalle", "Check name, amount, category and interval")
@@ -1471,6 +1495,18 @@ class MainViewModel(
     fun setNoExpenseReminderDays(days: Int) {
         viewModelScope.launch {
             container.userSettingsRepository.setNoExpenseReminderDays(days)
+        }
+    }
+
+    fun setCheckpointReminderDays(days: Int) {
+        viewModelScope.launch {
+            container.userSettingsRepository.setCheckpointReminderDays(days)
+        }
+    }
+
+    fun setBudgetWarningPercent(percent: Int) {
+        viewModelScope.launch {
+            container.userSettingsRepository.setBudgetWarningPercent(percent)
         }
     }
 

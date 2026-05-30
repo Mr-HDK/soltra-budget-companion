@@ -2,6 +2,9 @@ package com.hdk.soltra.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,6 +12,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -18,6 +23,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hdk.soltra.domain.AppLockMode
 import com.hdk.soltra.domain.AppThemeMode
@@ -199,6 +206,7 @@ fun TemplatesScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     exportFolderUri: String?,
@@ -220,10 +228,14 @@ fun SettingsScreen(
     noExpenseReminderEnabled: Boolean,
     checkpointReminderEnabled: Boolean,
     noExpenseReminderDays: Int,
+    checkpointReminderDays: Int,
+    budgetWarningPercent: Int,
     onToggleReminders: (Boolean) -> Unit,
     onToggleNoExpenseReminder: (Boolean) -> Unit,
     onToggleCheckpointReminder: (Boolean) -> Unit,
     onChangeNoExpenseReminderDays: (Int) -> Unit,
+    onChangeCheckpointReminderDays: (Int) -> Unit,
+    onChangeBudgetWarningPercent: (Int) -> Unit,
     appLockMode: AppLockMode,
     onSetAppLockMode: (AppLockMode) -> Unit,
     onSetAppLockPin: (String) -> Unit,
@@ -239,6 +251,8 @@ fun SettingsScreen(
 ) {
     var backupHoursInput by rememberSaveable(backupIntervalHours) { mutableStateOf(backupIntervalHours.toString()) }
     var inactivityDaysInput by rememberSaveable(noExpenseReminderDays) { mutableStateOf(noExpenseReminderDays.toString()) }
+    var checkpointDaysInput by rememberSaveable(checkpointReminderDays) { mutableStateOf(checkpointReminderDays.toString()) }
+    var budgetPercentInput by rememberSaveable(budgetWarningPercent) { mutableStateOf(budgetWarningPercent.toString()) }
     var pinInput by rememberSaveable { mutableStateOf("") }
 
     LazyColumn(
@@ -246,15 +260,14 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(localized(AppTextKey.SETTINGS_STORAGE_TITLE), style = MaterialTheme.typography.titleMedium)
+            SettingsSection(title = localized(AppTextKey.SETTINGS_STORAGE_TITLE)) {
                 Text("${localized(AppTextKey.SETTINGS_CURRENT_FOLDER)}: ${exportFolderUri ?: localized(AppTextKey.COMMON_NOT_CONFIGURED)}")
                 Text("${localized(AppTextKey.SETTINGS_BACKUP_FILE)}: ${backupFileUri ?: localized(AppTextKey.COMMON_NOT_CONFIGURED)}")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onPickFolder) { Text(localized(AppTextKey.SETTINGS_CHOOSE_EXPORT_FOLDER)) }
                     OutlinedButton(onClick = onPickBackupFile) { Text(localized(AppTextKey.SETTINGS_CHOOSE_BACKUP_FILE_FALLBACK)) }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onExportNow) { Text(localized(AppTextKey.SETTINGS_EXPORT_NOW)) }
                     OutlinedButton(onClick = onPickRestoreFile) { Text(localized(AppTextKey.SETTINGS_RESTORE_FROM_BACKUP)) }
                 }
@@ -262,8 +275,8 @@ fun SettingsScreen(
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsSection(title = localized(AppTextKey.SETTINGS_AUTO_BACKUP_TITLE)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(localized(AppTextKey.SETTINGS_ENABLE_AUTO_BACKUP))
                     Switch(checked = autoBackupEnabled, onCheckedChange = onToggleAutoBackup)
                 }
@@ -283,16 +296,16 @@ fun SettingsScreen(
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsSection(title = localized(AppTextKey.SETTINGS_REMINDERS_TITLE)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(localized(AppTextKey.SETTINGS_ENABLE_REMINDERS))
                     Switch(checked = remindersEnabled, onCheckedChange = onToggleReminders)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(localized(AppTextKey.SETTINGS_REMINDER_INACTIVITY_EXPENSE))
                     Switch(checked = noExpenseReminderEnabled, onCheckedChange = onToggleNoExpenseReminder)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(localized(AppTextKey.SETTINGS_REMINDER_WEEKLY_CHECKPOINT))
                     Switch(checked = checkpointReminderEnabled, onCheckedChange = onToggleCheckpointReminder)
                 }
@@ -306,12 +319,31 @@ fun SettingsScreen(
                 OutlinedButton(onClick = { inactivityDaysInput.toIntOrNull()?.let(onChangeNoExpenseReminderDays) }) {
                     Text(localized(AppTextKey.COMMON_APPLY))
                 }
+                OutlinedTextField(
+                    value = checkpointDaysInput,
+                    onValueChange = { checkpointDaysInput = it.filter(Char::isDigit) },
+                    label = { Text("Checkpoint threshold (days)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+                OutlinedButton(onClick = { checkpointDaysInput.toIntOrNull()?.let(onChangeCheckpointReminderDays) }) {
+                    Text(localized(AppTextKey.COMMON_APPLY))
+                }
+                OutlinedTextField(
+                    value = budgetPercentInput,
+                    onValueChange = { budgetPercentInput = it.filter(Char::isDigit) },
+                    label = { Text("Budget alert threshold (%)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+                OutlinedButton(onClick = { budgetPercentInput.toIntOrNull()?.let(onChangeBudgetWarningPercent) }) {
+                    Text(localized(AppTextKey.COMMON_APPLY))
+                }
             }
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(localized(AppTextKey.SETTINGS_QUICK_WIDGET_TITLE), style = MaterialTheme.typography.titleMedium)
+            SettingsSection(title = localized(AppTextKey.SETTINGS_QUICK_WIDGET_TITLE)) {
                 ChipSelectCategory(
                     categories = widgetCategories,
                     selectedCategoryId = widgetDefaultCategoryId,
@@ -325,9 +357,8 @@ fun SettingsScreen(
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(localized(AppTextKey.LANGUAGE_SECTION_TITLE), style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsSection(title = localized(AppTextKey.LANGUAGE_SECTION_TITLE)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AppLanguagePreference.entries.forEach { pref ->
                         FilterChip(
                             selected = appLanguagePreference == pref,
@@ -340,9 +371,8 @@ fun SettingsScreen(
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(localized(AppTextKey.SETTINGS_APPEARANCE_TITLE), style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsSection(title = localized(AppTextKey.SETTINGS_APPEARANCE_TITLE)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AppThemeMode.entries.forEach { mode ->
                         FilterChip(
                             selected = appThemeMode == mode,
@@ -355,9 +385,8 @@ fun SettingsScreen(
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(localized(AppTextKey.SETTINGS_SECURITY_TITLE), style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsSection(title = localized(AppTextKey.SETTINGS_SECURITY_TITLE)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AppLockMode.entries.forEach { mode ->
                         FilterChip(
                             selected = appLockMode == mode,
@@ -381,9 +410,8 @@ fun SettingsScreen(
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(localized(AppTextKey.SETTINGS_CSV_TITLE), style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsSection(title = localized(AppTextKey.SETTINGS_CSV_TITLE)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onPickCsvFile) { Text(localized(AppTextKey.SETTINGS_CHOOSE_CSV_FILE)) }
                     OutlinedButton(onClick = onImportCsv) { Text(localized(AppTextKey.COMMON_IMPORT)) }
                     OutlinedButton(onClick = onClearCsvState) { Text(localized(AppTextKey.COMMON_CLEAR)) }
@@ -426,6 +454,27 @@ private fun ChipSelectPayment(
                 onClick = { onSelect(method) },
                 label = { Text(method.name) },
             )
+        }
+    }
+}
+
+@Composable
+private fun SettingsSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            content()
         }
     }
 }

@@ -31,6 +31,7 @@ fun ExpenseWithCategory.toDomain(): ExpenseRecord {
         paymentMethod = PaymentMethod.valueOf(expense.paymentMethod),
         merchantOrLabel = expense.merchantOrLabel,
         note = expense.note,
+        amountExpression = expense.amountExpression,
     )
 }
 

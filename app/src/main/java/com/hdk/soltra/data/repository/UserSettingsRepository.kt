@@ -47,6 +47,14 @@ class UserSettingsRepository(
         prefs[KEY_NO_EXPENSE_REMINDER_DAYS] ?: 2
     }
 
+    val checkpointReminderDays: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CHECKPOINT_REMINDER_DAYS] ?: 7
+    }
+
+    val budgetWarningPercent: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_BUDGET_WARNING_PERCENT] ?: 80
+    }
+
     val appLockMode: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[KEY_APP_LOCK_MODE] ?: "none"
     }
@@ -135,6 +143,18 @@ class UserSettingsRepository(
         }
     }
 
+    suspend fun setCheckpointReminderDays(days: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_CHECKPOINT_REMINDER_DAYS] = days.coerceIn(1, 90)
+        }
+    }
+
+    suspend fun setBudgetWarningPercent(percent: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_BUDGET_WARNING_PERCENT] = percent.coerceIn(1, 100)
+        }
+    }
+
     suspend fun setAppLockMode(mode: String) {
         context.dataStore.edit { prefs ->
             prefs[KEY_APP_LOCK_MODE] = mode
@@ -208,6 +228,8 @@ class UserSettingsRepository(
         private val KEY_NO_EXPENSE_REMINDER_ENABLED = booleanPreferencesKey("no_expense_reminder_enabled")
         private val KEY_CHECKPOINT_REMINDER_ENABLED = booleanPreferencesKey("checkpoint_reminder_enabled")
         private val KEY_NO_EXPENSE_REMINDER_DAYS = intPreferencesKey("no_expense_reminder_days")
+        private val KEY_CHECKPOINT_REMINDER_DAYS = intPreferencesKey("checkpoint_reminder_days")
+        private val KEY_BUDGET_WARNING_PERCENT = intPreferencesKey("budget_warning_percent")
         private val KEY_APP_LOCK_MODE = stringPreferencesKey("app_lock_mode")
         private val KEY_APP_LOCK_PIN = stringPreferencesKey("app_lock_pin")
         private val KEY_APP_THEME_MODE = stringPreferencesKey("app_theme_mode")

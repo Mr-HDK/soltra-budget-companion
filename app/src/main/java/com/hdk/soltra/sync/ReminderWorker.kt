@@ -31,9 +31,10 @@ class ReminderWorker(
         }
 
         if (settings.checkpointReminderEnabled.first()) {
+            val thresholdDays = settings.checkpointReminderDays.first().coerceIn(1, 90)
             val latestCheckpoint = app.container.balanceCheckpointRepository.latestRecordedAtEpochMillisOrNull()
             val inactiveDays = latestCheckpoint?.let { millisToDays(now - it) } ?: Long.MAX_VALUE
-            if (latestCheckpoint == null || inactiveDays >= 7) {
+            if (latestCheckpoint == null || inactiveDays >= thresholdDays) {
                 messages += "Pense a enregistrer un checkpoint banque/liquide."
             }
         }
@@ -46,11 +47,12 @@ class ReminderWorker(
             )
             val monthSpent = app.container.expenseRepository.monthTotal(from, to)
             val usagePercent = ((monthSpent * 100) / budget.monthlyBudgetMinor).toInt()
+            val warningPercent = settings.budgetWarningPercent.first().coerceIn(1, 100)
             when {
                 usagePercent >= 100 -> {
                     messages += "Budget mensuel depasse (${usagePercent}% utilise)."
                 }
-                usagePercent >= 80 -> {
+                usagePercent >= warningPercent -> {
                     messages += "Alerte budget: ${usagePercent}% du budget mensuel deja utilise."
                 }
             }

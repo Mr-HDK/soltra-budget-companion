@@ -29,6 +29,7 @@ class ExpenseRepository(
         paymentMethod: PaymentMethod,
         merchantOrLabel: String?,
         note: String?,
+        amountExpression: String? = null,
     ) {
         val now = System.currentTimeMillis()
         expenseDao.insert(
@@ -39,6 +40,7 @@ class ExpenseRepository(
                 paymentMethod = paymentMethod.name,
                 merchantOrLabel = merchantOrLabel?.trim()?.ifBlank { null },
                 note = note?.trim()?.ifBlank { null },
+                amountExpression = amountExpression?.trim()?.ifBlank { null },
                 createdAtEpochMillis = now,
                 updatedAtEpochMillis = now,
             ),
@@ -53,6 +55,7 @@ class ExpenseRepository(
         paymentMethod: PaymentMethod,
         merchantOrLabel: String?,
         note: String?,
+        amountExpression: String? = null,
     ) {
         val existing = expenseDao.getById(id) ?: return
         val now = System.currentTimeMillis()
@@ -65,6 +68,7 @@ class ExpenseRepository(
                 paymentMethod = paymentMethod.name,
                 merchantOrLabel = merchantOrLabel?.trim()?.ifBlank { null },
                 note = note?.trim()?.ifBlank { null },
+                amountExpression = amountExpression?.trim()?.ifBlank { null },
                 createdAtEpochMillis = existing.createdAtEpochMillis,
                 updatedAtEpochMillis = now,
                 source = existing.source,

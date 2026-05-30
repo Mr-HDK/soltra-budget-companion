@@ -1,7 +1,6 @@
 package com.hdk.soltra.ui
 
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.net.Uri
@@ -43,6 +42,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -163,6 +163,7 @@ import com.hdk.soltra.ui.components.SoltraTintedCard
 import com.hdk.soltra.ui.theme.soltra
 import com.hdk.soltra.util.formatDate
 import com.hdk.soltra.util.formatDateTime
+import com.hdk.soltra.util.amountExpressionToMinorOrNull
 import com.hdk.soltra.util.minorToMoneyString
 import java.util.Calendar
 import java.util.Locale
@@ -662,6 +663,8 @@ fun BudgetCompanionRoot(
     val noExpenseReminderEnabled by viewModel.noExpenseReminderEnabled.collectAsStateWithLifecycle()
     val checkpointReminderEnabled by viewModel.checkpointReminderEnabled.collectAsStateWithLifecycle()
     val noExpenseReminderDays by viewModel.noExpenseReminderDays.collectAsStateWithLifecycle()
+    val checkpointReminderDays by viewModel.checkpointReminderDays.collectAsStateWithLifecycle()
+    val budgetWarningPercent by viewModel.budgetWarningPercent.collectAsStateWithLifecycle()
     val appLockMode by viewModel.appLockMode.collectAsStateWithLifecycle()
     val appLockPin by viewModel.appLockPin.collectAsStateWithLifecycle()
     val appThemeMode by viewModel.appThemeMode.collectAsStateWithLifecycle()
@@ -679,7 +682,7 @@ fun BudgetCompanionRoot(
     var quickAmountInput by rememberSaveable { mutableStateOf("") }
     var quickNoteInput by rememberSaveable { mutableStateOf("") }
     var quickCategoryId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var quickPaymentMethod by rememberSaveable { mutableStateOf(PaymentMethod.CARTE_TPE) }
+    var quickPaymentMethod by rememberSaveable { mutableStateOf(quickWidgetDefaultPaymentMethod) }
     var quickDatePreset by rememberSaveable { mutableStateOf(QuickAddDatePreset.TODAY) }
     var quickAddFocusRequestId by rememberSaveable { mutableStateOf(0) }
     var appUnlocked by rememberSaveable(appLockMode) { mutableStateOf(appLockMode == AppLockMode.NONE) }
@@ -745,8 +748,8 @@ fun BudgetCompanionRoot(
     LaunchedEffect(quickAddOpenRequest?.requestId) {
         val request = quickAddOpenRequest ?: return@LaunchedEffect
         run {
-            quickCategoryId = addExpense.categoryId ?: categories.firstOrNull()?.id
-            quickPaymentMethod = addExpense.paymentMethod
+            quickCategoryId = quickWidgetDefaultCategoryId ?: addExpense.categoryId ?: categories.firstOrNull()?.id
+            quickPaymentMethod = quickWidgetDefaultPaymentMethod
             showQuickAdd = true
             if (request.focusAmount) {
                 quickAddFocusRequestId += 1
@@ -853,8 +856,8 @@ fun BudgetCompanionRoot(
             if (selectedTab != RootTab.SETTINGS) {
                 FloatingActionButton(
                     onClick = {
-                        quickCategoryId = quickCategoryId ?: addExpense.categoryId ?: categories.firstOrNull()?.id
-                        quickPaymentMethod = addExpense.paymentMethod
+                        quickCategoryId = quickCategoryId ?: quickWidgetDefaultCategoryId ?: addExpense.categoryId ?: categories.firstOrNull()?.id
+                        quickPaymentMethod = quickWidgetDefaultPaymentMethod
                         showQuickAdd = true
                     },
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -935,6 +938,7 @@ fun BudgetCompanionRoot(
                         onSearchChange = viewModel::setSearch,
                         onFilterCategory = viewModel::setFilterCategory,
                         onFilterPayment = viewModel::setFilterPayment,
+                        onFilterDateRange = viewModel::setFilterDateRange,
                     )
 
                     RootTab.CHECKPOINTS -> CheckpointsScreen(
@@ -1022,10 +1026,14 @@ fun BudgetCompanionRoot(
                         noExpenseReminderEnabled = noExpenseReminderEnabled,
                         checkpointReminderEnabled = checkpointReminderEnabled,
                         noExpenseReminderDays = noExpenseReminderDays,
+                        checkpointReminderDays = checkpointReminderDays,
+                        budgetWarningPercent = budgetWarningPercent,
                         onToggleReminders = viewModel::setRemindersEnabled,
                         onToggleNoExpenseReminder = viewModel::setNoExpenseReminderEnabled,
                         onToggleCheckpointReminder = viewModel::setCheckpointReminderEnabled,
                         onChangeNoExpenseReminderDays = viewModel::setNoExpenseReminderDays,
+                        onChangeCheckpointReminderDays = viewModel::setCheckpointReminderDays,
+                        onChangeBudgetWarningPercent = viewModel::setBudgetWarningPercent,
                         appLockMode = appLockMode,
                         onSetAppLockMode = viewModel::setAppLockMode,
                         onSetAppLockPin = viewModel::setAppLockPin,
@@ -1079,7 +1087,7 @@ fun BudgetCompanionRoot(
                 quickAmountInput = ""
                 quickNoteInput = ""
                 quickDatePreset = QuickAddDatePreset.TODAY
-                quickCategoryId = addExpense.categoryId ?: categories.firstOrNull()?.id
+                quickCategoryId = quickWidgetDefaultCategoryId ?: addExpense.categoryId ?: categories.firstOrNull()?.id
             },
         )
     }
@@ -1157,6 +1165,7 @@ private fun QuickAddExpenseSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(localized(AppTextKey.UI_QUICK_ADD), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            val quickAmountPreviewMinor = remember(amountInput) { amountInput.amountExpressionToMinorOrNull() }
             OutlinedTextField(
                 value = amountInput,
                 onValueChange = onAmountInputChange,
@@ -1165,7 +1174,12 @@ private fun QuickAddExpenseSheet(
                     .focusRequester(amountFocusRequester),
                 label = { Text("${localized(AppTextKey.SETTINGS_CSV_AMOUNT)} ($currency)") },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                supportingText = {
+                    if (amountInput.any { it in "+-*/()" } && quickAmountPreviewMinor != null) {
+                        Text("= ${quickAmountPreviewMinor.minorToMoneyString(currency)}")
+                    }
+                },
             )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2059,19 +2073,25 @@ private fun ExpensesScreen(
     onSearchChange: (String) -> Unit,
     onFilterCategory: (Long?) -> Unit,
     onFilterPayment: (PaymentMethod?) -> Unit,
+    onFilterDateRange: (Long?, Long?) -> Unit,
 ) {
     var pendingDeleteExpense by remember { mutableStateOf<com.hdk.soltra.domain.ExpenseRecord?>(null) }
     var addFormExpanded by rememberSaveable { mutableStateOf(addState.editingExpenseId != null) }
     var filtersExpanded by rememberSaveable { mutableStateOf(false) }
+    var customFilterFrom by rememberSaveable { mutableStateOf(filterState.fromEpochMillis ?: startOfMonthMillis()) }
+    var customFilterTo by rememberSaveable { mutableStateOf(filterState.toEpochMillis ?: endOfDayMillis(System.currentTimeMillis())) }
     val categoriesById = remember(categories) { categories.associateBy { it.id } }
+    val listState = rememberLazyListState()
 
     LaunchedEffect(addState.editingExpenseId) {
         if (addState.editingExpenseId != null) {
             addFormExpanded = true
+            listState.animateScrollToItem(0)
         }
     }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -2117,13 +2137,19 @@ private fun ExpensesScreen(
                                 }
                             }
                         }
+                        val amountPreviewMinor = remember(addState.amountInput) { addState.amountInput.amountExpressionToMinorOrNull() }
                         OutlinedTextField(
                             value = addState.amountInput,
                             onValueChange = { onUpdateAdd { s -> s.copy(amountInput = it) } },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("${localized(AppTextKey.SETTINGS_CSV_AMOUNT)} ($currency)") },
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                            supportingText = {
+                                if (addState.amountInput.any { it in "+-*/()" } && amountPreviewMinor != null) {
+                                    Text("= ${amountPreviewMinor.minorToMoneyString(currency)}")
+                                }
+                            },
                         )
                         DateTimeField(
                             label = "Date",
@@ -2225,12 +2251,77 @@ private fun ExpensesScreen(
                                 )
                             }
                         }
+                        Text(localized(AppTextKey.UI_PERIOD), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            FilterChip(
+                                selected = filterState.fromEpochMillis == null && filterState.toEpochMillis == null,
+                                onClick = { onFilterDateRange(null, null) },
+                                label = { Text(localized(AppTextKey.UI_ALL)) },
+                            )
+                            FilterChip(
+                                selected = filterState.fromEpochMillis == startOfDayMillis() && filterState.toEpochMillis == endOfDayMillis(),
+                                onClick = { onFilterDateRange(startOfDayMillis(), endOfDayMillis()) },
+                                label = { Text(localized(AppTextKey.UI_TODAY)) },
+                            )
+                            val currentMonth = currentMonthRangeMillis()
+                            FilterChip(
+                                selected = filterState.fromEpochMillis == currentMonth.first && filterState.toEpochMillis == currentMonth.second,
+                                onClick = { onFilterDateRange(currentMonth.first, currentMonth.second) },
+                                label = { Text(localized(AppTextKey.GRAPH_PERIOD_CURRENT_MONTH)) },
+                            )
+                            val previousMonth = previousMonthRangeMillis()
+                            FilterChip(
+                                selected = filterState.fromEpochMillis == previousMonth.first && filterState.toEpochMillis == previousMonth.second,
+                                onClick = { onFilterDateRange(previousMonth.first, previousMonth.second) },
+                                label = { Text(localized(AppTextKey.GRAPH_PERIOD_PREVIOUS_MONTH)) },
+                            )
+                            FilterChip(
+                                selected = filterState.fromEpochMillis == customFilterFrom && filterState.toEpochMillis == customFilterTo,
+                                onClick = { onFilterDateRange(customFilterFrom, customFilterTo) },
+                                label = { Text(localized(AppTextKey.GRAPH_PERIOD_CUSTOM)) },
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Box(Modifier.weight(1f)) {
+                                DateTimeField(
+                                    label = "Du",
+                                    epochMillis = customFilterFrom,
+                                    onValueChange = { epoch ->
+                                        val from = startOfDayMillis(epoch)
+                                        val to = customFilterTo.coerceAtLeast(from)
+                                        customFilterFrom = from
+                                        customFilterTo = to
+                                        onFilterDateRange(from, to)
+                                    },
+                                )
+                            }
+                            Box(Modifier.weight(1f)) {
+                                DateTimeField(
+                                    label = "Au",
+                                    epochMillis = customFilterTo,
+                                    onValueChange = { epoch ->
+                                        val to = endOfDayMillis(epoch)
+                                        val from = customFilterFrom.coerceAtMost(to)
+                                        customFilterFrom = from
+                                        customFilterTo = to
+                                        onFilterDateRange(from, to)
+                                    },
+                                )
+                            }
+                        }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                             OutlinedButton(
                                 onClick = {
                                     onSearchChange("")
                                     onFilterCategory(null)
                                     onFilterPayment(null)
+                                    onFilterDateRange(null, null)
                                 },
                             ) {
                                 Text(localized(AppTextKey.UI_RESET))
@@ -2242,7 +2333,8 @@ private fun ExpensesScreen(
                         Text(
                             "Filtres compacts actifs: ${if (filterState.search.isBlank()) "aucune recherche" else "recherche"} / " +
                                 "${filterState.categoryId?.let { "categorie" } ?: "toutes categories"} / " +
-                                "${if (filterState.paymentMethod == null) localized(AppTextKey.PAYMENT_METHOD_ALL) else localized(filterState.paymentMethod.labelKey())}",
+                                "${if (filterState.paymentMethod == null) localized(AppTextKey.PAYMENT_METHOD_ALL) else localized(filterState.paymentMethod.labelKey())} / " +
+                                filterState.dateRangeLabel(),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -2728,6 +2820,70 @@ private fun RecurrenceFrequencyDropdown(
     }
 }
 
+private fun ExpenseFilterUiState.dateRangeLabel(): String {
+    val from = fromEpochMillis
+    val to = toEpochMillis
+    return if (from == null && to == null) {
+        "toutes dates"
+    } else {
+        "${from?.formatDate() ?: "..."} -> ${to?.formatDate() ?: "..."}"
+    }
+}
+
+private fun startOfDayMillis(epochMillis: Long = System.currentTimeMillis()): Long {
+    return Calendar.getInstance().apply {
+        timeInMillis = epochMillis
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+}
+
+private fun endOfDayMillis(epochMillis: Long = System.currentTimeMillis()): Long {
+    return Calendar.getInstance().apply {
+        timeInMillis = epochMillis
+        set(Calendar.HOUR_OF_DAY, 23)
+        set(Calendar.MINUTE, 59)
+        set(Calendar.SECOND, 59)
+        set(Calendar.MILLISECOND, 999)
+    }.timeInMillis
+}
+
+private fun startOfMonthMillis(epochMillis: Long = System.currentTimeMillis()): Long {
+    return Calendar.getInstance().apply {
+        timeInMillis = epochMillis
+        set(Calendar.DAY_OF_MONTH, 1)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+}
+
+private fun currentMonthRangeMillis(epochMillis: Long = System.currentTimeMillis()): Pair<Long, Long> {
+    val start = startOfMonthMillis(epochMillis)
+    val end = Calendar.getInstance().apply {
+        timeInMillis = start
+        add(Calendar.MONTH, 1)
+        add(Calendar.MILLISECOND, -1)
+    }.timeInMillis
+    return start to end
+}
+
+private fun previousMonthRangeMillis(epochMillis: Long = System.currentTimeMillis()): Pair<Long, Long> {
+    val start = Calendar.getInstance().apply {
+        timeInMillis = startOfMonthMillis(epochMillis)
+        add(Calendar.MONTH, -1)
+    }.timeInMillis
+    val end = Calendar.getInstance().apply {
+        timeInMillis = start
+        add(Calendar.MONTH, 1)
+        add(Calendar.MILLISECOND, -1)
+    }.timeInMillis
+    return start to end
+}
+
 @Composable
 private fun DateTimeField(
     label: String,
@@ -2743,28 +2899,22 @@ private fun DateTimeField(
                 { _, year, month, dayOfMonth ->
                     val current = Calendar.getInstance().apply { timeInMillis = epochMillis }
                     current.set(year, month, dayOfMonth)
-                    TimePickerDialog(
-                        context,
-                        { _, hourOfDay, minute ->
-                            current.set(Calendar.HOUR_OF_DAY, hourOfDay)
-                            current.set(Calendar.MINUTE, minute)
-                            current.set(Calendar.SECOND, 0)
-                            current.set(Calendar.MILLISECOND, 0)
-                            onValueChange(current.timeInMillis)
-                        },
-                        calendar.get(Calendar.HOUR_OF_DAY),
-                        calendar.get(Calendar.MINUTE),
-                        true,
-                    ).show()
+                    current.set(Calendar.HOUR_OF_DAY, 0)
+                    current.set(Calendar.MINUTE, 0)
+                    current.set(Calendar.SECOND, 0)
+                    current.set(Calendar.MILLISECOND, 0)
+                    onValueChange(current.timeInMillis)
                 },
                 calendar.get(Calendar.YEAR),
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH),
-            ).show()
+            ).apply {
+                datePicker.firstDayOfWeek = Calendar.MONDAY
+            }.show()
         },
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text("$label: ${epochMillis.formatDateTime()}")
+        Text("$label: ${epochMillis.formatDate()}")
     }
 }
 
@@ -2773,6 +2923,10 @@ private fun QuickAddDatePreset.toEpochMillis(nowEpochMillis: Long = System.curre
     if (this == QuickAddDatePreset.YESTERDAY) {
         calendar.add(Calendar.DAY_OF_YEAR, -1)
     }
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
     return calendar.timeInMillis
 }
 
